@@ -1,5 +1,6 @@
 /**
  * Main Application Logic for Bank Statement Converter (Mandiri, BCA, BRI, BSI)
+ * Supports universal CSV (Mac/DOS/BOM), Mandiri XLSX/CSV, BRI XLSX/CSV, BSI HTML/XLSX, and BCA PDF.
  */
 
 let currentBank = 'mandiri';
@@ -81,13 +82,13 @@ window.switchBank = function(bank) {
     if (downloadMutasiBtn) downloadMutasiBtn.disabled = true;
 
     if (bank === 'mandiri') {
-        if (fileInput) fileInput.accept = ".csv";
-        if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File CSV Rekening Koran Mandiri";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv (Kopra / Mandiri Online)";
+        if (fileInput) fileInput.accept = ".csv, .xlsx, .xls";
+        if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File Rekening Koran Mandiri";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv / .xlsx / .xls (Kopra / Mandiri Online)";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank Mandiri:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>File input berupa <code>.csv</code> unduhan mutasi rekening Kopra / Mandiri Online.</li>
+                <li>Mendukung file <code>.csv</code> maupun <code>.xlsx / .xls</code> asli unduhan Kopra / Mandiri Online.</li>
                 <li>Kolom otomatis terdeteksi: <code>PostDate/Date</code>, <code>Remarks/Keterangan</code>, <code>Credit</code>, <code>Debit</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
@@ -105,13 +106,13 @@ window.switchBank = function(bank) {
             `;
         }
     } else if (bank === 'bri') {
-        if (fileInput) fileInput.accept = ".csv";
-        if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File CSV Rekening Koran BRI";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv (CMS BRI / Internet Banking BRI / BRImo)";
+        if (fileInput) fileInput.accept = ".csv, .xlsx, .xls";
+        if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File Rekening Koran BRI";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv / .xlsx (CMS BRI / QLola / BRImo)";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank BRI:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>File input berupa <code>.csv</code> unduhan mutasi rekening BRI (CMS / QLola / BRImo).</li>
+                <li>Mendukung file <code>.csv</code> maupun <code>.xlsx</code> unduhan mutasi rekening BRI (CMS / QLola / BRImo).</li>
                 <li>Mendeteksi kolom: <code>TGL_TRAN</code>, <code>DESK_TRAN / REMARK_CUSTOM</code>, <code>MUTASI_DEBET</code>, <code>MUTASI_KREDIT</code>, <code>SALDO_AKHIR_MUTASI</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
@@ -123,7 +124,7 @@ window.switchBank = function(bank) {
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank BSI:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>File input berupa <code>.xlsx</code> unduhan e-statement rekening BSI (Giro Institusi / Tabungan).</li>
+                <li>Mendukung file <code>.xlsx</code> murni maupun <code>.xls</code> web export dari BSI (Giro Institusi / Tabungan).</li>
                 <li>Ekstraksi otomatis header: No. Rekening, Periode, serta kolom <code>Waktu Transaksi</code>, <code>Deskripsi</code>, <code>Debet</code>, <code>Kredit</code>, <code>Saldo Riil</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
@@ -150,26 +151,26 @@ function handleFile(file) {
     const ext = file.name.toLowerCase().split('.').pop();
 
     if (currentBank === 'mandiri') {
-        if (ext !== 'csv') {
-            showStatus("Mohon pilih file berekstensi .csv untuk Bank Mandiri", "error");
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
+            showStatus("Format file tidak sesuai. Untuk Bank Mandiri, mohon gunakan file .csv atau .xlsx / .xls asli dari Kopra / Mandiri Online.", "error");
             return;
         }
         processMandiriFile(file);
     } else if (currentBank === 'bca') {
         if (ext !== 'pdf') {
-            showStatus("Mohon pilih file berekstensi .pdf untuk Bank BCA", "error");
+            showStatus("Format file tidak sesuai. Untuk Bank BCA, mohon gunakan file e-statement digital .pdf asli dari BCA.", "error");
             return;
         }
         processBCAFile(file);
     } else if (currentBank === 'bri') {
-        if (ext !== 'csv') {
-            showStatus("Mohon pilih file berekstensi .csv untuk Bank BRI", "error");
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
+            showStatus("Format file tidak sesuai. Untuk Bank BRI, mohon gunakan file .csv atau .xlsx dari CMS BRI / QLola / BRImo.", "error");
             return;
         }
         processBRIFile(file);
     } else if (currentBank === 'bsi') {
         if (ext !== 'xlsx' && ext !== 'xls') {
-            showStatus("Mohon pilih file Excel berekstensi .xlsx / .xls untuk Bank BSI", "error");
+            showStatus("Format file tidak sesuai. Untuk Bank BSI, mohon gunakan file e-statement .xlsx atau .xls dari BSI Net Banking.", "error");
             return;
         }
         processBSIFile(file);
@@ -233,43 +234,68 @@ function updateSuccessState(statementData) {
     showStatus(`Berhasil memproses ${statementData.records.length} transaksi (${statementData.bank || currentBank.toUpperCase()}). Siap diunduh.`, "success");
 }
 
-// 1. Process Mandiri
+// 1. Process Mandiri (CSV / XLSX / XLS)
 function processMandiriFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        try {
-            const content = evt.target.result;
-            const parsed = window.MandiriParser.parse(content);
+    showStatus("Sedang membaca dan memproses mutasi Bank Mandiri...", "info");
+    const ext = file.name.toLowerCase().split('.').pop();
 
-            // Sesuaikan struktur seragam
-            const records = parsed.records.map(r => ({
-                no: r.no,
-                date: r.date,
-                description: r.label,
-                debet: r.debet,
-                credit: r.credit,
-                type: r.amount >= 0 ? 'CR' : 'DB',
-                amount: r.amount,
-                calculatedSaldo: 0
-            }));
+    if (ext === 'xlsx' || ext === 'xls') {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const parsed = window.MandiriParser.parseWorkbook(workbook);
 
-            updateSuccessState({
-                bank: "Bank Mandiri",
-                nama: "",
-                noRek: "",
-                periode: "",
-                records: records,
-                integrityIssues: 0
-            });
-        } catch (err) {
-            console.error(err);
-            showStatus("Terjadi error parsing Mandiri: " + err.message, "error");
-        }
-    };
-    reader.readAsText(file);
+                if (!parsed || parsed.records.length === 0) {
+                    showStatus("Gagal: Tidak ditemukan transaksi valid pada file Excel Mandiri ini.", "error");
+                    return;
+                }
+
+                updateSuccessState({
+                    bank: "Bank Mandiri",
+                    nama: parsed.nama,
+                    noRek: parsed.noRek,
+                    periode: parsed.periode,
+                    records: parsed.records,
+                    integrityIssues: 0
+                });
+            } catch (err) {
+                console.error(err);
+                showStatus("Gagal memproses file Mandiri: " + err.message, "error");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const content = evt.target.result;
+                const parsed = window.MandiriParser.parse(content);
+
+                if (!parsed || parsed.records.length === 0) {
+                    showStatus("Gagal: Tidak ditemukan transaksi valid pada file CSV Mandiri ini.", "error");
+                    return;
+                }
+
+                updateSuccessState({
+                    bank: "Bank Mandiri",
+                    nama: parsed.nama,
+                    noRek: parsed.noRek,
+                    periode: parsed.periode,
+                    records: parsed.records,
+                    integrityIssues: 0
+                });
+            } catch (err) {
+                console.error(err);
+                showStatus("Gagal memproses file Mandiri: " + err.message, "error");
+            }
+        };
+        reader.readAsText(file);
+    }
 }
 
-// 2. Process BCA
+// 2. Process BCA (PDF)
 function processBCAFile(file) {
     showStatus("Sedang membaca dan memproses mutasi PDF BCA...", "info");
     const reader = new FileReader();
@@ -279,7 +305,7 @@ function processBCAFile(file) {
             const parsed = await window.BCAParser.parsePDF(arrayBuffer);
 
             if (!parsed || parsed.records.length === 0) {
-                showStatus("Gagal menemukan transaksi mutasi rekening pada file PDF BCA ini. Pastikan file bukan hasil scan gambar.", "error");
+                showStatus("Gagal: Tidak ditemukan transaksi mutasi pada file PDF BCA ini. Pastikan file bukan hasil scan foto/gambar.", "error");
                 return;
             }
 
@@ -299,46 +325,90 @@ function processBCAFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-// 3. Process BRI
+// 3. Process BRI (CSV / XLSX)
 function processBRIFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        try {
-            const content = evt.target.result;
-            const parsed = window.BRIParser.parse(content);
+    showStatus("Sedang membaca dan memproses mutasi Bank BRI...", "info");
+    const ext = file.name.toLowerCase().split('.').pop();
 
-            if (!parsed || parsed.records.length === 0) {
-                showStatus("Gagal menemukan transaksi pada file CSV BRI ini.", "error");
-                return;
+    if (ext === 'xlsx' || ext === 'xls') {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const parsed = window.BRIParser.parseWorkbook(workbook);
+
+                if (!parsed || parsed.records.length === 0) {
+                    showStatus("Gagal: Tidak ditemukan transaksi valid pada file Excel BRI ini.", "error");
+                    return;
+                }
+
+                updateSuccessState({
+                    bank: "Bank BRI",
+                    nama: "",
+                    noRek: parsed.noRek,
+                    periode: "",
+                    records: parsed.records,
+                    integrityIssues: 0
+                });
+            } catch (err) {
+                console.error(err);
+                showStatus("Gagal memproses file BRI: " + err.message, "error");
             }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const content = evt.target.result;
+                const parsed = window.BRIParser.parse(content);
 
-            updateSuccessState({
-                bank: "Bank BRI",
-                nama: "",
-                noRek: parsed.noRek,
-                periode: "",
-                records: parsed.records,
-                integrityIssues: 0
-            });
-        } catch (err) {
-            console.error(err);
-            showStatus("Terjadi error parsing BRI: " + err.message, "error");
-        }
-    };
-    reader.readAsText(file);
+                if (!parsed || parsed.records.length === 0) {
+                    showStatus("Gagal: Tidak ditemukan transaksi valid pada file CSV BRI ini.", "error");
+                    return;
+                }
+
+                updateSuccessState({
+                    bank: "Bank BRI",
+                    nama: "",
+                    noRek: parsed.noRek,
+                    periode: "",
+                    records: parsed.records,
+                    integrityIssues: 0
+                });
+            } catch (err) {
+                console.error(err);
+                showStatus("Gagal memproses file BRI: " + err.message, "error");
+            }
+        };
+        reader.readAsText(file);
+    }
 }
 
-// 4. Process BSI
+// 4. Process BSI (HTML .xls / XLSX)
 function processBSIFile(file) {
+    showStatus("Sedang membaca dan memproses mutasi BSI...", "info");
     const reader = new FileReader();
     reader.onload = function(evt) {
         try {
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const parsed = window.BSIParser.parse(workbook);
+            const buffer = evt.target.result;
+            const data = new Uint8Array(buffer);
+
+            // Deteksi apakah file berupa HTML Table (.xls web export dari BSI) atau Binary Excel
+            const textSample = new TextDecoder('utf-8').decode(data.slice(0, 2000));
+            let parsed = null;
+
+            if (textSample.includes('<table') || textSample.includes('<tr') || textSample.includes('<html')) {
+                const fullText = new TextDecoder('utf-8').decode(data);
+                parsed = window.BSIParser.parseHtml(fullText);
+            } else {
+                const workbook = XLSX.read(data, { type: 'array' });
+                parsed = window.BSIParser.parseWorkbook(workbook);
+            }
 
             if (!parsed || parsed.records.length === 0) {
-                showStatus("Gagal menemukan transaksi pada file Excel BSI ini.", "error");
+                showStatus("Gagal: Tidak ditemukan transaksi pada file Excel / XLS BSI ini.", "error");
                 return;
             }
 

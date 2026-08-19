@@ -1,32 +1,14 @@
 /**
- * BRI CSV Statement Parser & Converter
+ * BRI Statement Parser & Converter (CSV & XLSX)
+ * Supports CMS BRI, QLola, and BRImo statement formats.
  */
 
 const BRIParser = {
-    parseCSVLine(line, delimiter) {
-        const result = [];
-        let cur = '';
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const c = line[i];
-            if (c === '"' || c === "'") {
-                inQuotes = !inQuotes;
-            } else if (c === delimiter && !inQuotes) {
-                result.push(cur);
-                cur = '';
-            } else {
-                cur += c;
-            }
-        }
-        result.push(cur);
-        return result;
-    },
-
     formatDateOnly(dtStr) {
         if (!dtStr) return '';
-        let clean = dtStr.trim();
+        let clean = String(dtStr).trim();
 
-        // Cth: 01-01-25 4:50 atau 01-01-2025
+        // Cth: 01-01-25 4:50 atau 01-01-2025 atau 01/01/2025
         const match = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
         if (match) {
             let day = match[1].padStart(2, '0');
@@ -56,74 +38,121 @@ const BRIParser = {
 
     cleanLabel(rawText) {
         if (!rawText) return '';
-        return rawText
+        return String(rawText)
             .replace(/^["']|["']$/g, '')
             .replace(/\s+/g, ' ')
             .trim();
     },
 
+    parseAmount(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        let str = String(val).trim();
+        let isNegative = str.endsWith('-') || str.startsWith('-');
+        str = str.replace(/[^\d.]/g, '');
+        let num = parseFloat(str) || 0;
+        return isNegative ? -Math.abs(num) : Math.abs(num);
+    },
+
+    /**
+     * Parsing file CSV BRI menggunakan Universal CSVUtils
+     */
     parse(csvContent) {
-        const lines = csvContent.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length < 2) {
-            throw new Error("File CSV BRI tidak memiliki baris data yang cukup.");
+        const parsed = (typeof CSVUtils !== 'undefined')
+            ? CSVUtils.parse(csvContent)
+            : { rows: csvContent.split(/\r?\n/).map(l => l.split(';')) };
+
+        if (!parsed.rows || parsed.rows.length < 2) {
+            throw new Error("File CSV Bank BRI tidak memiliki baris data yang cukup.");
         }
 
-        const headerLine = lines[0];
-        let delimiter = ';';
-        if ((headerLine.match(/;/g) || []).length < (headerLine.match(/,/g) || []).length) {
-            delimiter = ',';
+        return this.parseFromRows(parsed.rows);
+    },
+
+    /**
+     * Parsing file Excel (.xlsx / .xls) BRI
+     */
+    parseWorkbook(workbook) {
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+        if (!rows || rows.length < 2) {
+            throw new Error("File Excel Bank BRI tidak memiliki baris data yang cukup.");
         }
 
-        const headers = this.parseCSVLine(headerLine, delimiter).map(h => h.toUpperCase().trim());
-        
-        let noRekIdx = headers.findIndex(h => h.includes('NOREK') || h.includes('NO_REK'));
-        let dateIdx = headers.findIndex(h => h.includes('TGL_TRAN') || h.includes('TGL_EFEKTIF') || h.includes('DATE'));
-        let descIdx = headers.findIndex(h => h.includes('REMARK_CUSTOM') || h.includes('DESK_TRAN') || h.includes('TRREMK'));
-        let debitIdx = headers.findIndex(h => h.includes('MUTASI_DEBET') || h.includes('DEBET') || h.includes('DEBIT'));
-        let creditIdx = headers.findIndex(h => h.includes('MUTASI_KREDIT') || h.includes('KREDIT') || h.includes('CREDIT'));
-        let saldoIdx = headers.findIndex(h => h.includes('SALDO_AKHIR_MUTASI') || h.includes('SALDO'));
+        return this.parseFromRows(rows);
+    },
 
-        if (dateIdx === -1) dateIdx = 2;
-        if (descIdx === -1) descIdx = 6;
-
+    /**
+     * Core processing logic for 2D array of rows
+     */
+    parseFromRows(rows) {
         let detectedNoRek = "";
+        let headerRowIdx = -1;
+        let colIdx = {
+            noRek: -1,
+            date: -1,
+            desc: -1,
+            remarkCustom: -1,
+            debit: -1,
+            credit: -1,
+            saldo: -1
+        };
+
+        for (let i = 0; i < Math.min(15, rows.length); i++) {
+            let row = rows[i].map(c => String(c).trim().toUpperCase());
+            let dateFound = row.findIndex(c => c.includes('TGL_TRAN') || c.includes('TGL_EFEKTIF') || c.includes('TANGGAL') || c === 'DATE');
+            let descFound = row.findIndex(c => c.includes('DESK_TRAN') || c.includes('REMARK_CUSTOM') || c.includes('TRREMK') || c.includes('KETERANGAN') || c.includes('URAIAN'));
+
+            if (dateFound !== -1 && descFound !== -1) {
+                headerRowIdx = i;
+                colIdx.date = dateFound;
+                colIdx.desc = descFound;
+                colIdx.remarkCustom = row.findIndex(c => c.includes('REMARK_CUSTOM') || c.includes('REMARK'));
+                colIdx.noRek = row.findIndex(c => c.includes('NOREK') || c.includes('NO_REK') || c.includes('NO REKENING'));
+                colIdx.debit = row.findIndex(c => c.includes('MUTASI_DEBET') || c.includes('DEBET') || c.includes('DEBIT'));
+                colIdx.credit = row.findIndex(c => c.includes('MUTASI_KREDIT') || c.includes('KREDIT') || c.includes('CREDIT'));
+                colIdx.saldo = row.findIndex(c => c.includes('SALDO_AKHIR_MUTASI') || c.includes('SALDO'));
+                break;
+            }
+        }
+
+        // Validasi Format Header
+        if (headerRowIdx === -1) {
+            throw new Error("Format kolom Bank BRI tidak dikenali. Pastikan file memiliki kolom Tanggal (TGL_TRAN), Keterangan (DESK_TRAN / REMARK_CUSTOM), dan Mutasi Debet/Kredit.");
+        }
+
         const records = [];
 
-        for (let i = 1; i < lines.length; i++) {
-            const row = this.parseCSVLine(lines[i], delimiter);
-            if (row.length < 3) continue;
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length < 3) continue;
 
-            if (!detectedNoRek && noRekIdx !== -1 && row[noRekIdx]) {
-                detectedNoRek = row[noRekIdx];
+            if (!detectedNoRek && colIdx.noRek !== -1 && row[colIdx.noRek]) {
+                detectedNoRek = String(row[colIdx.noRek]).trim();
             }
 
-            const rawDate = row[dateIdx] || '';
-            
-            // Prioritaskan REMARK_CUSTOM jika ada, jika tidak pakai DESK_TRAN
-            let rawLabel = '';
-            let remarkCustomIdx = headers.indexOf('REMARK_CUSTOM');
-            if (remarkCustomIdx !== -1 && row[remarkCustomIdx] && row[remarkCustomIdx].trim()) {
-                rawLabel = row[remarkCustomIdx];
-            } else if (descIdx !== -1 && row[descIdx]) {
-                rawLabel = row[descIdx];
-            }
+            const rawDate = row[colIdx.date];
+            if (!rawDate || String(rawDate).trim() === '') continue;
 
             const formattedDate = this.formatDateOnly(rawDate);
+            if (!formattedDate) continue;
+
+            // Prioritaskan REMARK_CUSTOM jika ada isinya, jika tidak pakai DESK_TRAN
+            let rawLabel = '';
+            if (colIdx.remarkCustom !== -1 && row[colIdx.remarkCustom] && String(row[colIdx.remarkCustom]).trim()) {
+                rawLabel = String(row[colIdx.remarkCustom]).trim();
+            } else if (colIdx.desc !== -1 && row[colIdx.desc]) {
+                rawLabel = String(row[colIdx.desc]).trim();
+            }
+
             const trimmedLabel = this.cleanLabel(rawLabel);
 
-            let debitVal = 0;
-            let creditVal = 0;
-            let saldoVal = 0;
+            let debitVal = colIdx.debit !== -1 ? Math.abs(this.parseAmount(row[colIdx.debit])) : 0;
+            let creditVal = colIdx.credit !== -1 ? Math.abs(this.parseAmount(row[colIdx.credit])) : 0;
+            let saldoVal = colIdx.saldo !== -1 ? Math.abs(this.parseAmount(row[colIdx.saldo])) : 0;
 
-            if (debitIdx !== -1 && row[debitIdx]) {
-                debitVal = parseFloat(row[debitIdx].replace(/,/g, '')) || 0;
-            }
-            if (creditIdx !== -1 && row[creditIdx]) {
-                creditVal = parseFloat(row[creditIdx].replace(/,/g, '')) || 0;
-            }
-            if (saldoIdx !== -1 && row[saldoIdx]) {
-                saldoVal = parseFloat(row[saldoIdx].replace(/,/g, '')) || 0;
-            }
+            if (debitVal === 0 && creditVal === 0) continue;
 
             let type = creditVal > 0 ? 'CR' : 'DB';
             let amount = creditVal > 0 ? creditVal : -debitVal;
@@ -131,7 +160,7 @@ const BRIParser = {
             records.push({
                 no: records.length + 1,
                 date: formattedDate,
-                rawDate: rawDate,
+                rawDate: String(rawDate),
                 description: trimmedLabel,
                 debet: debitVal,
                 credit: creditVal,
@@ -141,8 +170,12 @@ const BRIParser = {
             });
         }
 
+        if (records.length === 0) {
+            throw new Error("Tidak ditemukan transaksi valid pada file Bank BRI ini. Periksa apakah baris data kosong.");
+        }
+
         return {
-            bank: "BRI",
+            bank: "Bank BRI",
             noRek: detectedNoRek,
             records: records
         };

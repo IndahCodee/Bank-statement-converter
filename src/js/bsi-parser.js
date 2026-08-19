@@ -1,5 +1,6 @@
 /**
- * BSI Excel (.xlsx) Statement Parser & Converter
+ * BSI Statement Parser & Converter
+ * Supports genuine binary Excel (.xlsx), legacy binary (.xls), and BSI Web HTML (.xls).
  */
 
 const BSIParser = {
@@ -52,22 +53,81 @@ const BSIParser = {
         return isNegative ? -Math.abs(num) : Math.abs(num);
     },
 
-    parse(workbook) {
+    /**
+     * Parsing file BSI berformat HTML Table (file .xls hasil export web BSI)
+     */
+    parseHtml(htmlContent) {
+        let nama = "";
+        let noRek = "";
+        let periode = "";
+
+        // Ekstraksi Metadata Header
+        const rekMatch = htmlContent.match(/Rekening\s*:\s*(?:REKENING\s*:\s*)?(?:IDR\s*)?(\d+)(?:\s*-\s*([^<\r\n]+))?/i);
+        if (rekMatch) {
+            noRek = rekMatch[1] ? rekMatch[1].trim() : '';
+            nama = rekMatch[2] ? rekMatch[2].trim() : '';
+        }
+
+        const perMatch = htmlContent.match(/Periode\s*:\s*([^<\r\n]+)/i);
+        if (perMatch) {
+            periode = perMatch[1].trim();
+        }
+
+        // Ekstraksi Baris Menggunakan DOMParser (Browser) atau Regex Fallback
+        const rawData = [];
+
+        if (typeof DOMParser !== 'undefined') {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                const trElements = doc.querySelectorAll('tr');
+
+                trElements.forEach(tr => {
+                    const cells = [];
+                    const cellElements = tr.querySelectorAll('td, th');
+                    cellElements.forEach(td => cells.push(td.textContent.trim()));
+                    if (cells.length > 0) {
+                        rawData.push(cells);
+                    }
+                });
+            } catch (e) {
+                console.warn("DOMParser failed, falling back to regex row extraction", e);
+            }
+        }
+
+        // Fallback jika DOMParser tidak menghasilkan baris
+        if (rawData.length === 0) {
+            const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+            let trMatch;
+            while ((trMatch = trRegex.exec(htmlContent)) !== null) {
+                const trContent = trMatch[1];
+                const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+                let cellMatch;
+                const cells = [];
+                while ((cellMatch = cellRegex.exec(trContent)) !== null) {
+                    let cellText = cellMatch[1].replace(/<[^>]+>/g, '').trim();
+                    cells.push(cellText);
+                }
+                if (cells.length > 0) rawData.push(cells);
+            }
+        }
+
+        return this.parseFromRawData(rawData, { nama, noRek, periode });
+    },
+
+    /**
+     * Parsing file BSI berformat Binary Workbook (.xlsx)
+     */
+    parseWorkbook(workbook) {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        
-        // Konversi ke array 2 dimensi
         const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-        if (rawData.length < 5) {
-            throw new Error("File Excel BSI tidak memiliki baris data yang cukup.");
-        }
 
         let nama = "";
         let noRek = "";
         let periode = "";
 
-        // Ekstraksi Metadata Header BSI (Baris 1-14)
+        // Ekstraksi Metadata Header BSI (Baris 1-15)
         for (let i = 0; i < Math.min(15, rawData.length); i++) {
             let rowText = rawData[i].map(c => String(c)).join(' ');
             if (rowText.includes('Rekening :') || rowText.includes('REKENING :')) {
@@ -81,6 +141,21 @@ const BSIParser = {
                 if (pMatch) periode = pMatch[1].trim();
             }
         }
+
+        return this.parseFromRawData(rawData, { nama, noRek, periode });
+    },
+
+    /**
+     * Logika Inti Pemrosesan Matriks Data Mutasi BSI
+     */
+    parseFromRawData(rawData, metadata = {}) {
+        if (!rawData || rawData.length < 2) {
+            throw new Error("Tabel mutasi BSI tidak memiliki baris data yang cukup.");
+        }
+
+        let nama = metadata.nama || "";
+        let noRek = metadata.noRek || "";
+        let periode = metadata.periode || "";
 
         // Cari Baris Header Tabel (mencari 'Waktu Transaksi' / 'Deskripsi' / 'Debet')
         let headerRowIdx = -1;
@@ -163,7 +238,7 @@ const BSIParser = {
         }
 
         return {
-            bank: "BSI",
+            bank: "Bank Syariah Indonesia (BSI)",
             nama: nama,
             noRek: noRek,
             periode: periode,
