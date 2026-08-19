@@ -1,0 +1,15 @@
+# Bank Statement Converter .gitignore
+
+# Sensitive and sample data directories
+/input/
+/template/
+
+# Temporary and log files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# OS / Editor directories
+.vscode/
+.idea/
