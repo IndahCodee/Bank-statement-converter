@@ -1,479 +1,148 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Converter Rekening Koran ke Odoo Statement</title>
-    <!-- Library SheetJS untuk Ekspor Excel .xlsx -->
+    <title>Bank Statement Converter (Mandiri, BCA, BRI, BSI) to Odoo / Excel</title>
+    <!-- Library SheetJS untuk Ekspor & Baca Excel .xlsx -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Library PDF.js untuk Ekstraksi PDF BCA Client-Side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
     <!-- Google Font Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0b0f19;
-            --card-bg: #111827;
-            --border-color: #1f2937;
-            --accent-color: #6366f1;
-            --accent-hover: #4f46e5;
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --success-bg: #064e3b;
-            --success-text: #6ee7b7;
-            --error-bg: #7f1d1d;
-            --error-text: #fca5a5;
-        }
-
-        * {
-            box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
-        }
-
-        .container {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 580px;
-            width: 100%;
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
-        }
-
-        .header-tag {
-            display: inline-block;
-            background: rgba(99, 102, 241, 0.15);
-            color: #818cf8;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 6px 14px;
-            border-radius: 30px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-
-        h1 {
-            font-size: 24px;
-            font-weight: 800;
-            margin: 0 0 10px 0;
-            letter-spacing: -0.5px;
-            color: #ffffff;
-        }
-
-        p.subtitle {
-            color: var(--text-secondary);
-            font-size: 14px;
-            line-height: 1.6;
-            margin: 0 0 28px 0;
-        }
-
-        .upload-area {
-            border: 2px dashed #374151;
-            border-radius: 14px;
-            padding: 32px 20px;
-            text-align: center;
-            background-color: rgba(17, 24, 39, 0.6);
-            cursor: pointer;
-            transition: all 0.25s ease;
-            margin-bottom: 24px;
-        }
-
-        .upload-area:hover {
-            border-color: var(--accent-color);
-            background-color: rgba(99, 102, 241, 0.05);
-            transform: translateY(-2px);
-        }
-
-        .upload-icon {
-            font-size: 36px;
-            margin-bottom: 12px;
-            display: block;
-        }
-
-        .file-label {
-            color: #e5e7eb;
-            font-size: 14px;
-            font-weight: 600;
-            display: block;
-        }
-
-        .file-sublabel {
-            color: var(--text-secondary);
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .file-name {
-            margin-top: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            color: #818cf8;
-            background: rgba(99, 102, 241, 0.1);
-            padding: 8px 14px;
-            border-radius: 8px;
-            display: inline-block;
-            word-break: break-all;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .btn-convert {
-            width: 100%;
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: #ffffff;
-            border: none;
-            padding: 16px;
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
-        }
-
-        .btn-convert:hover {
-            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 12px 24px -5px rgba(99, 102, 241, 0.5);
-        }
-
-        .btn-convert:disabled {
-            background: #1f2937;
-            color: #4b5563;
-            cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
-        }
-
-        .status-box {
-            margin-top: 20px;
-            padding: 14px 18px;
-            border-radius: 10px;
-            font-size: 13.5px;
-            font-weight: 500;
-            display: none;
-            line-height: 1.5;
-        }
-
-        .status-box.success {
-            background-color: var(--success-bg);
-            border: 1px solid rgba(110, 231, 183, 0.3);
-            color: var(--success-text);
-            display: block;
-        }
-
-        .status-box.error {
-            background-color: var(--error-bg);
-            border: 1px solid rgba(252, 165, 165, 0.3);
-            color: var(--error-text);
-            display: block;
-        }
-
-        .rules-card {
-            margin-top: 28px;
-            background-color: rgba(31, 41, 55, 0.4);
-            border: 1px solid rgba(55, 65, 81, 0.6);
-            border-radius: 12px;
-            padding: 18px 20px;
-            font-size: 12.5px;
-            color: #d1d5db;
-        }
-
-        .rules-card strong {
-            color: #f3f4f6;
-            display: block;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
-        .rules-card ul {
-            padding-left: 18px;
-            margin: 0;
-        }
-
-        .rules-card li {
-            margin-bottom: 5px;
-            line-height: 1.5;
-        }
-
-        .rules-card code {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            color: #a5b4fc;
-        }
-
-        .encouragement-banner {
-            margin-top: 24px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            background: linear-gradient(90deg, #d4659d, #e99fdf, #6cefc3);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-transform: uppercase;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="src/css/style.css">
 </head>
+
 <body>
 
-<div class="container">
-    <span class="header-tag">Odoo Accounting Tool</span>
-    <h1>Bank Statement Converter</h1>
-    <p class="subtitle">Ubah file CSV mutasi rekening menjadi file Excel Odoo Clean secara otomatis, rapi, dan presisi.</p>
+    <div class="container">
+        <div class="header-section">
+            <span class="header-tag">Client-Side Multi-Bank Converter</span>
+            <h1>Bank Statement Converter</h1>
+            <p class="subtitle">Konversi mutasi rekening Bank Mandiri (.csv), BCA (.pdf), BRI (.csv), dan BSI (.xlsx) ke
+                format Excel Odoo Statement atau Tabel Mutasi secara instan & aman (100% di browser RAM).</p>
+        </div>
 
-    <div class="upload-area" onclick="document.getElementById('csvInput').click();">
-        <span class="upload-icon">📄</span>
-        <span class="file-label" id="uploadLabel">Pilih atau Seret File CSV Rekening Koran</span>
-        <span class="file-sublabel">Mendukung format CSV / TXT Bank</span>
-        <div class="file-name" id="fileNameDisplay" style="display: none;"></div>
-        <input type="file" id="csvInput" accept=".csv, .txt" onchange="handleFile(event)">
+        <!-- 4 Bank Tab Selector -->
+        <div class="tabs-nav">
+            <button id="tabMANDIRI" class="tab-btn active mandiri-tab" onclick="switchBank('mandiri')">
+                <img src="public/Mandiri.png" alt="Bank Mandiri" class="tab-logo" onerror="this.style.display='none'">
+                <span>Mandiri</span>
+                <span class="tab-badge badge-mandiri">CSV</span>
+            </button>
+            <button id="tabBCA" class="tab-btn bca-tab" onclick="switchBank('bca')">
+                <img src="public/BCA.png" alt="Bank BCA" class="tab-logo" onerror="this.style.display='none'">
+                <span>BCA</span>
+                <span class="tab-badge badge-bca">PDF</span>
+            </button>
+            <button id="tabBRI" class="tab-btn bri-tab" onclick="switchBank('bri')">
+                <img src="public/BRI.png" alt="Bank BRI" class="tab-logo" onerror="this.style.display='none'">
+                <span>BRI</span>
+                <span class="tab-badge badge-bri">CSV</span>
+            </button>
+            <button id="tabBSI" class="tab-btn bsi-tab" onclick="switchBank('bsi')">
+                <img src="public/BSI.png" alt="Bank BSI" class="tab-logo" onerror="this.style.display='none'">
+                <span>BSI</span>
+                <span class="tab-badge badge-bsi">XLSX</span>
+            </button>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click();">
+            <span class="upload-icon">📄</span>
+            <span class="file-label" id="uploadLabel">Pilih atau Seret File CSV Rekening Koran Mandiri</span>
+            <span class="file-sublabel" id="uploadSublabel">Format: .csv (Kopra / Mandiri Online)</span>
+            <div class="file-name" id="fileNameDisplay" style="display: none;"></div>
+            <input type="file" id="fileInput" accept=".csv" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Action Buttons (Unified Dual Export for All Banks) -->
+        <div class="btn-group">
+            <button id="downloadOdooBtn" class="btn" disabled>
+                Download Odoo Statement (.xlsx)
+            </button>
+            <button id="downloadMutasiBtn" class="btn btn-secondary" disabled>
+                Download Tabel Mutasi Lengkap (.xlsx)
+            </button>
+        </div>
+
+        <!-- Status Box -->
+        <div id="statusBox" class="status-box"></div>
+
+        <!-- Account Info Card -->
+        <div id="accountCard" class="account-card">
+            <div class="account-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Bank</span>
+                    <span class="meta-value" id="metaBank">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Nama Rekening</span>
+                    <span class="meta-value" id="metaNama">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">No. Rekening</span>
+                    <span class="meta-value" id="metaNoRek">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Periode Mutasi</span>
+                    <span class="meta-value" id="metaPeriode">-</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Integritas Data</span>
+                    <span class="meta-value success" id="metaIntegrity">OK</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Data Preview -->
+        <div id="previewSection" class="preview-section">
+            <div class="preview-header">
+                <span class="preview-title" id="previewTitle">Preview Transaksi</span>
+                <span class="preview-count" id="previewCount">0 baris</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="previewTable">
+                    <thead>
+                        <tr id="previewTableHead"></tr>
+                    </thead>
+                    <tbody id="previewTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Rules / Guidance Card -->
+        <div class="rules-card" id="rulesCard">
+            <strong id="rulesTitle">Keterangan Format File Bank Mandiri:</strong>
+            <ul id="rulesList">
+                <li>File input berupa <code>.csv</code> unduhan mutasi rekening Kopra / Mandiri Online.</li>
+                <li>Kolom otomatis terdeteksi: <code>PostDate/Date</code>, <code>Remarks/Keterangan</code>,
+                    <code>Credit</code>, <code>Debit</code>.</li>
+                <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
+            </ul>
+        </div>
+
+        <div class="footer-credit">
+            Zero Server • Zero DB • 100% Client-Side Private Processing
+        </div>
     </div>
 
-    <button id="convertBtn" class="btn-convert" onclick="processCSV()" disabled>Convert & Download Excel Odoo</button>
-
-    <div id="statusBox" class="status-box"></div>
-
-    <div class="rules-card">
-        <strong>Terimakasih sudah menggunakan tools ini:</strong>
-        <ul>
-            <li>Tools bank statement converter ini baru support statement bank mandiri</li>
-            <li>Akan di update soonnnn</li>
-        
-        </ul>
-    </div>
-
-    <div class="encouragement-banner">
-        🔥 semangattttttt 🔥
-    </div>
-</div>
-
-<script>
-let selectedFile = null;
-
-function handleFile(e) {
-    const file = e.target.files[0];
-    if (file) {
-        selectedFile = file;
-        document.getElementById('uploadLabel').innerText = "File Berhasil Dipilih";
-        const fnDisplay = document.getElementById('fileNameDisplay');
-        fnDisplay.innerText = file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
-        fnDisplay.style.display = "inline-block";
-        document.getElementById('convertBtn').disabled = false;
-        hideStatus();
-    }
-}
-
-function showStatus(msg, type) {
-    const box = document.getElementById('statusBox');
-    box.innerText = msg;
-    box.className = 'status-box ' + type;
-}
-
-function hideStatus() {
-    const box = document.getElementById('statusBox');
-    box.style.display = 'none';
-    box.className = 'status-box';
-}
-
-function parseCSVLine(line, delimiter) {
-    const result = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (c === '"' || c === "'") {
-            inQuotes = !inQuotes;
-        } else if (c === delimiter && !inQuotes) {
-            result.push(cur);
-            cur = '';
-        } else {
-            cur += c;
-        }
-    }
-    result.push(cur);
-    return result;
-}
-
-// Konversi tanggal khusus YYYY-MM-DD
-function formatDateOnly(dtStr) {
-    if (!dtStr) return '';
-    let clean = dtStr.trim();
-
-    // Match DD-MM-YY, DD-MM-YYYY, DD/MM/YY, DD/MM/YYYY
-    const match = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
-    if (match) {
-        let day = match[1].padStart(2, '0');
-        let month = match[2].padStart(2, '0');
-        let year = match[3];
-        if (year.length === 2) {
-            year = '20' + year;
-        }
-        return `${year}-${month}-${day}`;
-    }
-
-    // Match YYYY-MM-DD
-    const matchYMD = clean.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-    if (matchYMD) {
-        let year = matchYMD[1];
-        let month = matchYMD[2].padStart(2, '0');
-        let day = matchYMD[3].padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    // Fallback Native Date
-    const d = new Date(clean);
-    if (!isNaN(d.getTime())) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    }
-
-    return clean;
-}
-
-// Bersihkan spasi ganda dan trim label
-function cleanLabel(rawText) {
-    if (!rawText) return '';
-    return rawText
-        .replace(/^["']|["']$/g, '') // Hapus quote luar
-        .replace(/\s+/g, ' ')        // Ubah multiple spaces/tabs/newlines jadi single space
-        .trim();                    // Trim depan dan belakang
-}
-
-function processCSV() {
-    if (!selectedFile) return;
-
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        try {
-            const content = evt.target.result;
-            const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-
-            if (lines.length < 2) {
-                showStatus("File CSV tidak memiliki baris data yang cukup.", "error");
-                return;
-            }
-
-            // Detect delimiter
-            const headerLine = lines[0];
-            let delimiter = ';';
-            if ((headerLine.match(/;/g) || []).length < (headerLine.match(/,/g) || []).length) {
-                delimiter = ',';
-            }
-
-            const headers = parseCSVLine(headerLine, delimiter).map(h => h.toLowerCase().trim());
-
-            let dateIdx = headers.findIndex(h => h.includes('postdate') || h.includes('date') || h.includes('tanggal'));
-            let labelIdx = headers.findIndex(h => h.includes('remarks') || h.includes('additionaldesc') || h.includes('keterangan'));
-            let creditIdx = headers.findIndex(h => h.includes('credit') || h.includes('kredit'));
-            let debitIdx = headers.findIndex(h => h.includes('debit'));
-
-            if (dateIdx === -1) dateIdx = 2;
-            if (labelIdx === -1) labelIdx = 3;
-
-            // Baris Header Excel
-            const excelRows = [
-                ["Date", "Label", "Partner", "Amount"]
-            ];
-
-            let count = 0;
-
-            for (let i = 1; i < lines.length; i++) {
-                const row = parseCSVLine(lines[i], delimiter);
-                if (row.length < 2) continue;
-
-                const rawDate = row[dateIdx] || '';
-                const rawLabel = row[labelIdx] || (row[labelIdx + 1] ? row[labelIdx + 1] : '');
-
-                const formattedDate = formatDateOnly(rawDate);
-                const trimmedLabel = cleanLabel(rawLabel);
-
-                let creditVal = 0;
-                let debitVal = 0;
-
-                if (creditIdx !== -1 && row[creditIdx]) {
-                    creditVal = parseFloat(row[creditIdx].replace(/,/g, '')) || 0;
-                }
-                if (debitIdx !== -1 && row[debitIdx]) {
-                    debitVal = parseFloat(row[debitIdx].replace(/,/g, '')) || 0;
-                }
-
-                if (creditIdx === -1 && debitIdx === -1) {
-                    if (row[5]) creditVal = parseFloat(row[5].replace(/,/g, '')) || 0;
-                    if (row[6]) debitVal = parseFloat(row[6].replace(/,/g, '')) || 0;
-                }
-
-                let amount = 0;
-                if (creditVal > 0) {
-                    amount = Math.abs(creditVal);
-                } else if (debitVal > 0) {
-                    amount = -Math.abs(debitVal);
-                }
-
-                excelRows.push([
-                    formattedDate,
-                    trimmedLabel,
-                    "", // Partner kosong
-                    amount
-                ]);
-
-                count++;
-            }
-
-            // Create Excel Workbook
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(excelRows);
-            XLSX.utils.book_append_sheet(wb, ws, "Bank Statement Lines");
-
-            const outputName = selectedFile.name.replace(/\.[^/.]+$/, "") + "_odoo_clean.xlsx";
-            XLSX.writeFile(wb, outputName);
-
-            showStatus(`Berhasil! ${count} transaksi berhasil dikonversi ke ${outputName}`, "success");
-
-        } catch (err) {
-            console.error(err);
-            showStatus("Terjadi kesalahan saat memproses file: " + err.message, "error");
-        }
-    };
-
-    reader.readAsText(selectedFile);
-}
-</script>
+    <!-- Scripts -->
+    <script src="src/js/mandiri-parser.js"></script>
+    <script src="src/js/bca-parser.js"></script>
+    <script src="src/js/bri-parser.js"></script>
+    <script src="src/js/bsi-parser.js"></script>
+    <script src="src/js/app.js"></script>
 
 </body>
+
 </html>
