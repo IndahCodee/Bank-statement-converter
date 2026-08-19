@@ -28,7 +28,7 @@
         <div class="header-section">
             <span class="header-tag">Client-Side Multi-Bank Converter</span>
             <h1>Bank Statement Converter</h1>
-            <p class="subtitle">Konversi mutasi rekening Bank Mandiri (.csv/.xlsx), BCA (.pdf), BRI (.csv/.xlsx), dan BSI (.xlsx/.xls) ke
+            <p class="subtitle">Konversi mutasi rekening Bank Mandiri (.csv), BCA (.pdf), BRI (.csv), dan BSI (.xlsx/.xls) ke
                 format Excel Odoo Statement atau Tabel Mutasi secara instan & aman (100% di browser RAM).</p>
         </div>
 
@@ -37,7 +37,7 @@
             <button id="tabMANDIRI" class="tab-btn active mandiri-tab" onclick="switchBank('mandiri')">
                 <img src="public/Mandiri.png" alt="Bank Mandiri" class="tab-logo" onerror="this.style.display='none'">
                 <span>Mandiri</span>
-                <span class="tab-badge badge-mandiri">CSV / XLSX</span>
+                <span class="tab-badge badge-mandiri">CSV</span>
             </button>
             <button id="tabBCA" class="tab-btn bca-tab" onclick="switchBank('bca')">
                 <img src="public/BCA.png" alt="Bank BCA" class="tab-logo" onerror="this.style.display='none'">
@@ -47,7 +47,7 @@
             <button id="tabBRI" class="tab-btn bri-tab" onclick="switchBank('bri')">
                 <img src="public/BRI.png" alt="Bank BRI" class="tab-logo" onerror="this.style.display='none'">
                 <span>BRI</span>
-                <span class="tab-badge badge-bri">CSV / XLSX</span>
+                <span class="tab-badge badge-bri">CSV</span>
             </button>
             <button id="tabBSI" class="tab-btn bsi-tab" onclick="switchBank('bsi')">
                 <img src="public/BSI.png" alt="Bank BSI" class="tab-logo" onerror="this.style.display='none'">
@@ -60,7 +60,7 @@
         <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click();">
             <span class="upload-icon">📄</span>
             <span class="file-label" id="uploadLabel">Pilih atau Seret File Rekening Koran Mandiri</span>
-            <span class="file-sublabel" id="uploadSublabel">Format: .csv / .xlsx / .xls (Kopra / Mandiri Online)</span>
+            <span class="file-sublabel" id="uploadSublabel">Format: .csv</span>
             <div class="file-name" id="fileNameDisplay" style="display: none;"></div>
             <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="handleFileSelect(event)">
         </div>
@@ -124,7 +124,7 @@
         <div class="rules-card" id="rulesCard">
             <strong id="rulesTitle">Keterangan Format File Bank Mandiri:</strong>
             <ul id="rulesList">
-                <li>Mendukung file <code>.csv</code> maupun <code>.xlsx / .xls</code> asli unduhan Kopra / Mandiri Online.</li>
+                <li>Mendukung file <code>.csv</code>asli unduhan Kopra</li>
                 <li>Kolom otomatis terdeteksi: <code>PostDate/Date</code>, <code>Remarks/Keterangan</code>, <code>Credit</code>, <code>Debit</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             </ul>

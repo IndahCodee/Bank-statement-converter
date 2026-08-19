@@ -84,11 +84,11 @@ window.switchBank = function(bank) {
     if (bank === 'mandiri') {
         if (fileInput) fileInput.accept = ".csv, .xlsx, .xls";
         if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File Rekening Koran Mandiri";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv / .xlsx / .xls (Kopra / Mandiri Online)";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank Mandiri:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>Mendukung file <code>.csv</code> maupun <code>.xlsx / .xls</code> asli unduhan Kopra / Mandiri Online.</li>
+                <li>Mendukung file <code>.csv</code> asli unduhan Kopra</li>
                 <li>Kolom otomatis terdeteksi: <code>PostDate/Date</code>, <code>Remarks/Keterangan</code>, <code>Credit</code>, <code>Debit</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
@@ -96,7 +96,7 @@ window.switchBank = function(bank) {
     } else if (bank === 'bca') {
         if (fileInput) fileInput.accept = ".pdf";
         if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File PDF Rekening Koran BCA";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .pdf (E-Statement Rekening Giro / Tabungan BCA)";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .pdf";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank BCA:";
         if (rulesList) {
             rulesList.innerHTML = `
@@ -108,11 +108,11 @@ window.switchBank = function(bank) {
     } else if (bank === 'bri') {
         if (fileInput) fileInput.accept = ".csv, .xlsx, .xls";
         if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File Rekening Koran BRI";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv / .xlsx (CMS BRI / QLola / BRImo)";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .csv";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank BRI:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>Mendukung file <code>.csv</code> maupun <code>.xlsx</code> unduhan mutasi rekening BRI (CMS / QLola / BRImo).</li>
+                <li>Mendukung file <code>.csv</code> unduhan mutasi rekening BRI.</li>
                 <li>Mendeteksi kolom: <code>TGL_TRAN</code>, <code>DESK_TRAN / REMARK_CUSTOM</code>, <code>MUTASI_DEBET</code>, <code>MUTASI_KREDIT</code>, <code>SALDO_AKHIR_MUTASI</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
@@ -120,11 +120,11 @@ window.switchBank = function(bank) {
     } else if (bank === 'bsi') {
         if (fileInput) fileInput.accept = ".xlsx, .xls";
         if (uploadLabel) uploadLabel.innerText = "Pilih atau Seret File Excel Rekening Koran BSI";
-        if (uploadSublabel) uploadSublabel.innerText = "Format: .xlsx / .xls (BSI Net Banking / CMS Giro Wadiah)";
+        if (uploadSublabel) uploadSublabel.innerText = "Format: .xlsx / .xls";
         if (rulesTitle) rulesTitle.innerText = "Keterangan Format File Bank BSI:";
         if (rulesList) {
             rulesList.innerHTML = `
-                <li>Mendukung file <code>.xlsx</code> murni maupun <code>.xls</code> web export dari BSI (Giro Institusi / Tabungan).</li>
+                <li>Mendukung file <code>.xlsx</code> murni maupun <code>.xls</code> web export dari BSI.</li>
                 <li>Ekstraksi otomatis header: No. Rekening, Periode, serta kolom <code>Waktu Transaksi</code>, <code>Deskripsi</code>, <code>Debet</code>, <code>Kredit</code>, <code>Saldo Riil</code>.</li>
                 <li>Mendukung ekspor ke <b>Odoo Clean (.xlsx)</b> dan <b>Tabel Mutasi Lengkap (.xlsx)</b>.</li>
             `;
