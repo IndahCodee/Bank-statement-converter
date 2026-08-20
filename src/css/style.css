@@ -104,12 +104,8 @@ p.subtitle {
     padding: 6px;
     border-radius: 16px;
     border: 1px solid var(--border-color);
-}
-
-@media (max-width: 700px) {
-    .tabs-nav {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .tab-btn {
@@ -117,7 +113,7 @@ p.subtitle {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 10px 8px;
     border-radius: 12px;
     background: transparent;
     border: 1px solid transparent;
@@ -126,6 +122,13 @@ p.subtitle {
     font-weight: 700;
     cursor: pointer;
     transition: all 0.25s ease;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.tab-btn span:not(.tab-badge) {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
@@ -487,5 +490,138 @@ tr:hover td {
     font-size: 11.5px;
     color: var(--text-secondary);
 }
+
+/* Responsive Media Queries */
+@media (max-width: 768px) {
+    .tabs-nav {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        padding: 0;
+        margin: 0;
+        display: block;
+        background: var(--bg-primary);
+        background-image: none;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px 14px;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .container::before {
+        height: 3px;
+    }
+
+    .header-section {
+        margin-bottom: 18px;
+    }
+
+    .header-section h1 {
+        font-size: 22px;
+    }
+
+    .header-tag {
+        font-size: 10px;
+        padding: 4px 10px;
+        margin-bottom: 8px;
+    }
+
+    p.subtitle {
+        font-size: 12.5px;
+    }
+
+    .tabs-nav {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 4px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .tab-btn {
+        padding: 8px 6px;
+        gap: 5px;
+        border-radius: 8px;
+    }
+
+    .tab-logo {
+        height: 16px;
+        max-width: 32px;
+    }
+
+    .tab-btn span:not(.tab-badge) {
+        font-size: 12px;
+    }
+
+    .tab-badge {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+
+    .upload-area {
+        padding: 20px 12px;
+        margin-bottom: 16px;
+    }
+
+    .upload-icon {
+        font-size: 28px;
+    }
+
+    .file-label {
+        font-size: 13px;
+    }
+
+    .file-sublabel {
+        font-size: 11px;
+    }
+
+    .btn-group {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .btn {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+
+    .account-card {
+        padding: 12px 14px;
+        margin-bottom: 16px;
+    }
+
+    .account-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .meta-value {
+        font-size: 12.5px;
+    }
+
+    .preview-section {
+        padding: 12px;
+        margin-top: 16px;
+    }
+
+    .rules-card {
+        padding: 12px 14px;
+        margin-top: 16px;
+    }
+}
+
 
 
